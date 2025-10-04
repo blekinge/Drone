@@ -32,6 +32,7 @@
 - 3× LED med seriemodstande på **GPIO 12, 13, 15**.
 - Strømforsyning 5V/2A (servo/motor), breadboard, ledninger, evt. step-down.
 
+## Schematic
 
 [Modtager schematic](https://github.com/gert-lauritsen/Drone/blob/main/Controller/Modtager/TocBoatReceiver.pdf)
 
