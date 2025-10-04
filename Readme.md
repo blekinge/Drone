@@ -34,9 +34,9 @@
 
 ## Schematic
 
-[Modtager schematic](https://github.com/gert-lauritsen/Drone/blob/main/Controller/Modtager/TocBoatReceiver.pdf)
+- [Modtager schematic](https://github.com/gert-lauritsen/Drone/blob/main/Controller/Modtager/TocBoatReceiver.pdf)
 
-[Sender Schematic](https://github.com/gert-lauritsen/Drone/blob/main/Controller/Sender/RcSender.pdf)
+- [Sender Schematic](https://github.com/gert-lauritsen/Drone/blob/main/Controller/Sender/RcSender.pdf)
 
 ## Datapakker (reference)
 ```c
