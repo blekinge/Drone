@@ -12,6 +12,7 @@
 3. Kende ESP-NOW til lav-latens en-til-en/mesh/broadcast kommunikation uden AP.
 4. Designe en robust datapakke (kommando/telemetri) og testprocedurer.
 5. Anvende bedste praksis for strømforsyning, jording, EMI og failsafe.
+6. ArduPilot implementation
 
 ---
 
@@ -30,7 +31,7 @@
 - PWM motor/ESC/controller på **GPIO4** (LEDC PWM).
 - 3× LED med seriemodstande på **GPIO 12, 13, 15**.
 - Strømforsyning 5V/2A (servo/motor), breadboard, ledninger, evt. step-down.
-- (Valgfrit) Logisk analyzer/oscilloskop.
+
 
 [Modtager schematic](https://github.com/gert-lauritsen/Drone/blob/main/Controller/Modtager/TocBoatReceiver.pdf)
 
