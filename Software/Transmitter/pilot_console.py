@@ -36,7 +36,7 @@ def reader_thread(ser):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--port", required=True, help="Seriel port (fx COM5 eller /dev/ttyUSB0)")
+    ap.add_argument("--port", default="COM12", help="Seriel port (fx COM5 eller /dev/ttyUSB0)")
     ap.add_argument("--baud", type=int, default=115200)
     args = ap.parse_args()
 

@@ -3,6 +3,19 @@
   - Manuelle input: to potmetre (servo, motor) + 3 knapper (LED-bitmasker)
   - PC-kommandoer via USB-seriel (mode=..., servo=..., motor=..., leds=...)
   - ESP-NOW: sender CommandPacket til pilot, modtager TelemetryPacket og forwarder til PC
+ 
+  Recommended pins for potentiometer (ADC1)
+  - GPIO32 (ADC1_CH4)
+  - GPIO33 (ADC1_CH5)
+  - GPIO34 (ADC1_CH6, input-only)
+  - GPIO35 (ADC1_CH7, input-only)
+  - GPIO36 / VP (ADC1_CH0, input-only)
+  - GPIO39 / VN (ADC1_CH3, input-only)
+
+  Avoid (or only use if Wi-Fi is OFF)
+
+  ADC2 pins: GPIO0, 2, 4, 12, 13, 14, 15, 25, 26, 27
+  ADC2 conflicts with the Wi-Fi driver, so readings can be unstable/zero during ESP-NOW.
 */
 
 #include <WiFi.h>
@@ -18,14 +31,14 @@
 #endif
 
 // ---------- Pins ----------
-#define POT_SERVO_PIN 17   // ADC (input-only OK)
-#define POT_MOTOR_PIN 18   // ADC
-#define Joystick1_ 14
+#define POT_SERVO_PIN 32   // ADC (input-only OK)
+#define POT_MOTOR_PIN 33   // ADC
+#define Joystick1_sel 14
 
-#define POT_1 5   // ADC
-#define POT_2 4   // ADC
-#define Joystick1_V 14
-#define Joystick1_H 16
+#define POT_1 36   // ADC
+#define POT_2 39   // ADC
+#define Joystick1_V 34
+#define Joystick1_H 35
 #define Joystick1_Sel 19
 
 
@@ -129,6 +142,8 @@ void forwardTelemetryIfDue() {
       Serial.print("\"speed_kmh\":"); Serial.print(lastTelemetry.speed_kmh, 2); Serial.print(",");
       Serial.print("\"sats\":"); Serial.print(lastTelemetry.sats); Serial.print(",");
       Serial.print("\"fixAge_ms\":"); Serial.print(lastTelemetry.fixAge_ms);
+      Serial.print("\"Servo_us\":"); Serial.print(cmd.servo_us);
+      Serial.print("\"motor_duty\":"); Serial.print(cmd.motor_duty);
       Serial.println("}");
     }
   }
@@ -137,6 +152,7 @@ void forwardTelemetryIfDue() {
 void applyManualInputs() {
   int adcServo = analogRead(POT_SERVO_PIN);
   int adcMotor = analogRead(POT_MOTOR_PIN);
+  //Serial.print("Read input Servo and motor "); Serial.print(adcServo); Serial.print(" "); Serial.println(adcMotor);
   cmd.servo_us  = mapServoFromADC(adcServo);
   cmd.motor_duty= mapMotorFromADC(adcMotor);
   cmd.leds      = readLedMask();

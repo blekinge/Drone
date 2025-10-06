@@ -1,3 +1,16 @@
+/*----------------------------------------------------------------------
+Pin-valg på WROVER (hurtigt overblik)
+Må bruges til PWM (LEDC): 18, 19, 21, 22, 23, 25, 26, 27, 32, 33.
+
+Undgå/obs:
+34–39 er input-only → ikke PWM.
+6–11 er til intern flash → brug ikke.
+0, 2, 12, 15 er boot-strapping → undgå til PWM hvis du kan.
+
+Start med GPIO18 eller GPIO25/26/27 for færre konflikter.
+
+*/
+
 #include <WiFi.h>
 #include <esp_now.h>
 #include <Wire.h>
@@ -12,17 +25,19 @@
 #define GPS_RX        16     // UART2 RX
 #define GPS_TX        17     // UART2 TX
 #define SERVO_PIN     14
-#define MOTOR_PWM_PIN 4
+#define MOTOR_PWM_PIN 18      //Må bruges til PWM (LEDC): 18, 19, 21, 22, 23, 25, 26, 27, 32, 33.
 #define LED1_PIN      12     // bit0
 #define LED2_PIN      13     // bit1
 #define LED3_PIN      15     // bit2
 
 #define MaxPuls       2500
 #define MinPuls       500
-#define DEBUG_TELEMETRY 1
+#define DEBUG_TELEMETRY 0
+#define DebugCmd        1
+#define DeBugMsg_MS   1000
 // ===================== Motor PWM (LEDC) ======================
 const int motorPwmChannel = 0;
-const int MOTOR_PWM_FREQ_HZ = 20000; // 20 kHz (quiet for many motor drivers)
+const int MOTOR_PWM_FREQ_HZ = 50; // 20 kHz (quiet for many motor drivers)
 const int MOTOR_PWM_RES_BITS = 10;   // 0..1023 duty
 
 // ===================== GPS ======================
@@ -38,8 +53,8 @@ uint16_t current_servo_us = 1500;
 
 // ===================== Timing ==================
 unsigned long lastTelemetryMs = 0;
-const unsigned long TELEMETRY_PERIOD_MS = 2000;
-
+const unsigned long TELEMETRY_PERIOD_MS = 200;
+unsigned long lastDebugMsg = 0;
 // ===================== ESP-NOW payloads =====================
 // Keep packets small (<250 bytes). Pack structs to avoid padding.
 typedef struct __attribute__((packed)) {
@@ -85,13 +100,23 @@ void onDataRecv(const esp_now_recv_info *info, const uint8_t *incomingData, int 
 void applyCommand(const CommandPacket& cmd) {
   // Servo
   uint16_t us = constrain(cmd.servo_us, 500, 2500); // wider bound, clamp safely
+  //us=us*256;
   servoMotor.writeMicroseconds(us);
   current_servo_us = us;
-
+    
   // Motor PWM
   uint16_t duty = constrain(cmd.motor_duty, 0, (1<<MOTOR_PWM_RES_BITS)-1);
-  ledcWrite(motorPwmChannel, duty);
+  //ledcWrite(motorPwmChannel, duty);
 
+  analogWrite(MOTOR_PWM_PIN, duty>>2);
+
+#if DebugCmd
+  unsigned long now = millis();
+  if (now - lastDebugMsg >= DeBugMsg_MS) {
+    Serial.printf("current_servo_us %u duty %u cmd.duty %u \n",us,duty>>2,cmd.motor_duty);
+    lastDebugMsg=now;
+  }
+#endif
   // LEDs bitmask: bit0->12, bit1->13, bit2->15
   digitalWrite(LED1_PIN, (cmd.leds & 0x01) ? HIGH : LOW);
   digitalWrite(LED2_PIN, (cmd.leds & 0x02) ? HIGH : LOW);
@@ -181,17 +206,23 @@ void setup() {
   ESP32PWM::allocateTimer(3);
 
   servoMotor.setPeriodHertz(50);  
-  servoMotor.attach(SERVO_PIN,MinPuls,MaxPuls);
+  servoMotor.attach(SERVO_PIN);
   servoMotor.writeMicroseconds(current_servo_us);
 
   // Motor PWM via LEDC
+ 
+  pinMode(MOTOR_PWM_PIN, OUTPUT);
+  analogWrite(MOTOR_PWM_PIN, 0);
+
+  /*
   int motorPwmChannel = ledcAttach(MOTOR_PWM_PIN, MOTOR_PWM_FREQ_HZ, MOTOR_PWM_RES_BITS);
   if (motorPwmChannel < 0) {
     Serial.println("Motor attach failed");
   }
 
   ledcWrite(motorPwmChannel, 0);
-
+  */
+  
   // WiFi + ESP-NOW
   WiFi.mode(WIFI_STA);
   WiFi.disconnect(); // ensure clean state
@@ -228,6 +259,7 @@ void loop() {
     haveCommand = false;
     interrupts();
     applyCommand(cmd);
+    //Serial.print(cmd.motor_duty); Serial.print(" "); Serial.println(cmd.servo_us); 
   }
 
   // Send telemetry periodically
