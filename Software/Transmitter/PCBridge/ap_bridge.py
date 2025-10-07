@@ -11,7 +11,7 @@ import serial
 # ======== CONFIG (edit me) ========
 SERIAL_PORT   = "COM10"                # <-- change to your ESP32 bridge port
 BAUD          = 115200
-SITL_ENDPOINT = "udp:127.0.0.1:14550"
+SITL_ENDPOINT = "udpin:127.0.0.1:14550"
 CH_SERVO      = 1   # ArduPilot CH1 -> servo_us
 CH_THROTTLE   = 3   # ArduPilot CH3 -> motor duty 0..1023
 SERIAL_DEBUG_PEEK_SEC = 2.0
@@ -37,38 +37,57 @@ def open_serial():
     return ser
 
 def send_gps_input(mav, tel):
-    try:
-        lat = int(float(tel.get('lat', 0.0)) * 1e7)
-        lon = int(float(tel.get('lon', 0.0)) * 1e7)
-        vground = float(tel.get('speed_kmh', 0.0)) / 3.6
-        mav.mav.gps_input_send(
-            int(time.time()*1e6),
-            0, 0, 0, 0, 0,
-            lat, lon, 0,
-            1.0, 0,
-            vground, 0.0,
-            0.0, 0.0,
-            0, 0, 0,
-            3,
-            int(tel.get('sats', 8)),
-            0
-        )
-    except Exception as e:
-        print(f"[WARN] gps_input send failed: {e}")
+    # GPS_INPUT: 19 positional args in this order
+    now_us = int(time.time() * 1e6)
+    lat = int(float(tel.get('lat', 0.0)) * 1e7)
+    lon = int(float(tel.get('lon', 0.0)) * 1e7)
+    alt = 0.0
+
+    # Ignore things we don’t provide (velocities, accuracies, yaw)
+    # 1 horiz vel | 2 vert vel | 4 speed acc | 8 horiz acc | 16 vert acc | 32 yaw
+    IGNORE = (1 | 2 | 4 | 8 | 16 | 32)
+
+    sats = int(tel.get('sats', 0))
+    fix_type = 3 if sats >= 6 else (2 if sats >= 4 else 1)  # rough heuristic
+    hdop = 1.0
+    vdop = 2.0
+
+    mav.mav.gps_input_send(
+        now_us,        # time_usec (uint64)
+        0,             # gps_id (uint8)
+        IGNORE,        # ignore_flags (uint16)
+        0,             # time_week_ms (uint16)
+        0,             # time_week (uint16)
+        fix_type,      # fix_type (uint8)
+        lat,           # lat (int32, 1e7)
+        lon,           # lon (int32, 1e7)
+        alt,           # alt (float)
+        hdop,          # hdop (float)
+        vdop,          # vdop (float)
+        0.0, 0.0, 0.0, # vn, ve, vd (float)
+        0.0, 0.0, 0.0, # speed_acc, horiz_acc, vert_acc (float)
+        sats,          # satellites_visible (uint8)
+        0.0            # yaw (float)
+    )
 
 def send_battery(mav, tel):
-    try:
-        voltage = float(tel.get('busV', 0.0))
-        current = float(tel.get('current_mA', 0.0)) / 1000.0  # A
-        mav.mav.battery_status_send(
-            0, 0,
-            [int(voltage*1000)] + [-1]*9,
-            int(current*100),   # cA (10*mA units)
-            -1, -1, -1, -1,
-            0, 0, 0
-        )
-    except Exception as e:
-        print(f"[WARN] battery_status send failed: {e}")
+    # BATTERY_STATUS: 10 positional args (older pymavlink)
+    voltage = float(tel.get('busV', 0.0))
+    current = float(tel.get('current_mA', 0.0)) / 1000.0  # A
+
+    mav.mav.battery_status_send(
+        0,                           # id
+        0,                           # battery_function
+        0,                           # type
+        0,                           # temperature (cdegC) or 0 if unknown
+        [int(voltage*1000)] + [0]*9, # voltages[10] in mV
+        int(current*100),            # current_battery in 10 mA units
+        -1,                          # current_consumed (mAh) unknown
+        -1,                          # energy_consumed (hJ) unknown
+        -1                           # battery_remaining (%) unknown
+    )
+
+
 
 def rc_from_servo_output(msg):
     servo_us    = getattr(msg, f"servo{CH_SERVO}_raw", 1500)
