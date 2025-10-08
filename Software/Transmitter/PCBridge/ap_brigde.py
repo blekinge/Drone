@@ -9,7 +9,7 @@ from pymavlink import mavutil
 import serial
 
 # ======== CONFIG (edit me) ========
-SERIAL_PORT   = "COM10"                # <-- change to your ESP32 bridge port
+SERIAL_PORT   = "COM6"                # <-- change to your ESP32 bridge port
 BAUD          = 115200
 SITL_ENDPOINT = "udpin:0.0.0.0:14550"   # if SITL is in WSL sending to Windows host, you can also use "udpin:0.0.0.0:14550"
 CH_SERVO      = 1   # ArduPilot CH1 -> servo_us
